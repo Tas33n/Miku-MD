@@ -2,6 +2,7 @@
 
 process.on('uncaughtException', console.error)
 require("./config")
+const ytdl = require('ytdl-core')
 const { BufferJSON, WA_DEFAULT_EPHEMERAL, generateWAMessageFromContent, proto, generateWAMessageContent, generateWAMessage, prepareWAMessageMedia, areJidsSameUser, getContentType, WAFlag } = require('@adiwajshing/baileys')
 const zMiku = require("@adiwajshing/baileys")
 const fs = require('fs')
@@ -1523,7 +1524,7 @@ case 'nsfwmenu':
     if (isBan) return reply(mess.banned)	 			
     if (isBanChat) return reply(mess.bangc)
     if (!AntiNsfw) return reply(mess.nonsfw)
-        reply(` *━━━〈  📛 NSFW Menu 📛  〉━━━*\n\nhentaivideo, blowjobgif, hneko, masturbation, thighs, pussy, panties, orgy, ahegao, ass, bdsm, blowjob, cuckold, ero, gasm, cum, femdom, foot, gangbang, glasses, jahy, trap, blowjobgif, spank, hneko, hwaifu, gasm`)
+        reply(` *━━━〈  📛 NSFW Menu 📛  〉━━━*\n\nahegao, ass, bdsm, cuckold, cum, ero, femdom, gangbang, foot, glasses, hentai, masturbation, orgy, panties, pussy, tentacles, things, yuri ,nsfwloli, blowjobgif, hentaivideo, trap, hneko, hwaifu`)
     break
 
 case 'reaction': case 'react': case 'reactions': case 'r':
@@ -2445,6 +2446,23 @@ if (isBanChat) return reply(mess.bangc)
  }
  break
 
+
+case'admin': {
+    if (isBan) return reply(mess.banned)	 			
+ if (isBanChat) return reply(mess.bangc)
+ if (!m.isGroup) return replay(mess.grouponly)
+ if (!text) return replay(`*Please quote or write a meaningful message to tag admins to*`)
+ let teks = `*「 Tag Admins 」*
+  
+ *Message : ${text}*\n\n`
+ for (let mem of groupAdmins) {
+ teks += `🤴 @${mem.split('@')[0]}\n`
+ }
+ Miku.sendMessage(m.chat, { text: teks, mentions: groupAdmins}, { quoted: m })
+ }
+ break
+
+
  case 'hidetag': {
     if (isBan) return reply(mess.banned)	 			
  if (isBanChat) return reply(mess.bangc)
@@ -3324,8 +3342,8 @@ case 'music': case 'play': case 'song': case 'ytplay': {
  let search = await yts(text)
  let anu = search.videos[0]
  let buttons = [
- {buttonId: `${prefix}ytad ${text}`, buttonText: {displayText: '♫ Audio'}, type: 1},
- {buttonId: `${prefix}ytvd ${text}`, buttonText: {displayText: '► Video'}, type: 1}
+ {buttonId: `${prefix}ytad ${anu.url}`, buttonText: {displayText: '♫ Audio'}, type: 1},
+ {buttonId: `${prefix}ytvd ${anu.url}`, buttonText: {displayText: '► Video'}, type: 1}
 
  ]
  let buttonMessage = {
@@ -3349,37 +3367,112 @@ case 'music': case 'play': case 'song': case 'ytplay': {
  break
 
  case 'ytad': {
-    if (isBan) return reply(mess.banned)	 			
-    if (isBanChat) return reply(mess.bangc)
-    const YT=require('./lib/ytdlcore')
-    let yts = require("yt-search")
-    let search = await yts(text)
-    let anu = search.videos[0]
-    const ytmp3play = await YT.mp3(anu.url)
-    let stats = fs.statSync(ytmp3play.path)
-    let fileSizeInBytes = stats.size;
-    if (fileSizeInBytes > 60000000) return reply('Cant send audios longer than 60 MB!')
-    
- await Miku.sendMessage(from, {document: fs.readFileSync(ytmp3play.path),fileName: anu.title + '.mp3',mimetype: 'audio/mpeg',}, {quoted:m})
- }
- break
-
+    const getRandom = (ext) => {
+        return `${Math.floor(Math.random() * 10000)}${ext}`;
+      };
+        if (args.length === 0) {
+          reply(`❌ URL is empty! \nSend ${prefix}yta url`);
+          return;
+        }
+        let urlYt = args[0];
+        if (!urlYt.startsWith("http")) {
+          reply(`❌ Give youtube link!`);
+          return;
+        }
+        let infoYt = await ytdl.getInfo(urlYt);
+        //30 MIN
+        if (infoYt.videoDetails.lengthSeconds >= 1800) {
+          reply(`❌ Video too big!`);
+          return;
+        }
+        let titleYt = infoYt.videoDetails.title;
+        let randomName = getRandom(".mp3");
+      
+        const stream = ytdl(urlYt, {
+          filter: (info) => info.audioBitrate == 160 || info.audioBitrate == 128,
+        }).pipe(fs.createWriteStream(`./${randomName}`));
+        console.log("Audio downloading ->", urlYt);
+        // reply("Downloading.. This may take upto 5 min!");
+        await new Promise((resolve, reject) => {
+          stream.on("error", reject);
+          stream.on("finish", resolve);
+        });
+      
+        let stats = fs.statSync(`./${randomName}`);
+        let fileSizeInBytes = stats.size;
+        // Convert the file size to megabytes (optional)
+        let fileSizeInMegabytes = fileSizeInBytes / (1024 * 1024);
+        console.log("Audio downloaded ! Size: " + fileSizeInMegabytes);
+        if (fileSizeInMegabytes <= 40) {
+            Miku.sendMessage(
+             m.chat,
+            {
+              audio: fs.readFileSync(`./${randomName}`),
+              fileName: titleYt + ".mp3",
+              mimetype: "audio/mpeg",
+            },
+            { quoted:m }
+          );
+        } else {
+          m.reply(`❌ File size bigger than 40mb.`);
+        }
+       fs.unlinkSync(`./${randomName}`);
+    }
+break 
  case 'ytvd': {
-    if (isBan) return reply(mess.banned)	 			
- if (isBanChat) return reply(mess.bangc)
- const YT=require('./lib/ytdlcore')
-    let yts = require("yt-search")
-    let search = await yts(text)
-    let anu = search.videos[0]
-    const ytmp4play = await YT.mp4(anu.url)
-    let vidduration =ytmp4play.duration;
-    if (vidduration > 1800) return reply('Cant send videos longer than *30 min*')
- Miku.sendMessage(from, {video:{url:ytmp4play.videoUrl}, mimetype:"video/mp4", caption:anu.title+' By *Miku MD*',}, {quoted:m})
- }
- break
-
-
-
+    const getRandom = (ext) => {
+        return `${Math.floor(Math.random() * 10000)}${ext}`;
+      };
+        if (args.length === 0) {
+          m.reply(`❌ URL is empty! \nSend ${prefix}ytv url`);
+          return;
+        }
+        let urlYt = args[0];
+        if (!urlYt.startsWith("http")) {
+          m.reply(`❌ Give youtube link!`);
+          return;
+        }
+        let infoYt = await ytdl.getInfo(urlYt);
+        //30 MIN
+        if (infoYt.videoDetails.lengthSeconds >= 1800) {
+          m.reply(`❌ Video file too big!`);
+          return;
+        }
+        let titleYt = infoYt.videoDetails.title;
+        let randomName = getRandom(".mp4");
+      
+        const stream = ytdl(urlYt, {
+          filter: (info) => info.itag == 22 || info.itag == 18,
+        }).pipe(fs.createWriteStream(`./${randomName}`));
+        //22 - 1080p/720p and 18 - 360p
+        console.log("Video downloading ->", urlYt);
+        // reply("Downloading.. This may take upto 5 min!");
+        await new Promise((resolve, reject) => {
+          stream.on("error", reject);
+          stream.on("finish", resolve);
+        });
+      
+        let stats = fs.statSync(`./${randomName}`);
+        let fileSizeInBytes = stats.size;
+        // Convert the file size to megabytes (optional)
+        let fileSizeInMegabytes = fileSizeInBytes / (1024 * 1024);
+        console.log("Video downloaded ! Size: " + fileSizeInMegabytes);
+        if (fileSizeInMegabytes <= 100) {
+        Miku.sendMessage(
+            m.chat,
+            {
+              video: fs.readFileSync(`./${randomName}`),
+              caption: `${titleYt}`,
+            },
+            { quoted: m }
+          );
+        } else {
+          m.reply(`❌ File size bigger than 40mb.`);
+        }
+      
+        fs.unlinkSync(`./${randomName}`);
+    }
+break
  case 'ytmp3': case 'ytmusic':  case 'ytmp4': case 'ytvideo': case 'ytdl':{
     if (isBan) return reply(mess.banned)	 			
  if (isBanChat) return reply(mess.bangc)
@@ -3391,8 +3484,8 @@ case 'music': case 'play': case 'song': case 'ytplay': {
  let search = await yts(text)
  let anu = search.videos[0]
  let buttons = [
- {buttonId: `${prefix}ytad2 ${text}`, buttonText: {displayText: '♫ Audio'}, type: 1},
- {buttonId: `${prefix}ytvd2 ${text}`, buttonText: {displayText: '► Video'}, type: 1}
+ {buttonId: `${prefix}ytad ${anu.url}`, buttonText: {displayText: '♫ Audio'}, type: 1},
+ {buttonId: `${prefix}ytvd ${anu.url}`, buttonText: {displayText: '► Video'}, type: 1}
 
  ]
  let buttonMessage = {
@@ -3414,21 +3507,6 @@ case 'music': case 'play': case 'song': case 'ytplay': {
  Miku.sendMessage(m.chat, buttonMessage, { quoted: m })
  }
  break
-
-
- case 'ytad2': {
-    if (isBan) return reply(mess.banned)	 			
-    if (isBanChat) return reply(mess.bangc)
-    const YT=require('./lib/ytdlcore')
-    const ytmp3play2 = await YT.mp3(text)
-    let stats = fs.statSync(ytmp3play2.path)
-    let fileSizeInBytes = stats.size;
-    if (fileSizeInBytes > 60000000) return reply('Cant send audios longer than 60 MB!')
-    
- await Miku.sendMessage(from, {document: fs.readFileSync(ytmp3play2.path),fileName:'Miku_YTmp3_Downloader.mp3',mimetype: 'audio/mpeg',}, {quoted:m})
- }
- break
-
  case 'ytvd2': {
     if (isBan) return reply(mess.banned)	 			
  if (isBanChat) return reply(mess.bangc)
@@ -3845,62 +3923,62 @@ case 'truth':
                            Miku.sendMessage(from, { image: buffer, caption: '*You have chosen Truth*\n'+ mikutruthww }, {quoted:m})
                            break
 
+ /////////NSFW comm/////////////////                          
 
+//let bjif = await GIFBufferToVideoBuffer(bjf) 
 
-case 'nsfwmiku':
-    if (isBan) return reply(mess.banned)
-    if (isBanChat) return reply(mess.bangc)
-reply(mess.wait)
-nye = `http://api.lolhuman.xyz/api/gimage?apikey=${lolkey}&query=${command}`
-Miku.sendMessage(from, {image:{url:nye}, caption:"Master..."}, {quoted:m})
-break
-
-case 'mediafire': case 'mediafiredl': {
-	if (isBan) return reply(mess.banned)
-    if (isBanChat) return reply(mess.bangc)
-if (!text) return reply(mess.linkm)
-if (!isUrl(args[0]) && !args[0].includes('mediafire.com')) return reply(`The link you provided is invalid`)
-const baby1 = await mediafireDl(text)
-if (baby1[0].size.split('MB')[0] >= 999) return reply('*File Over Limit* '+util.format(baby1))
-const result4 = `「  *Mediafire Downloader*  」
-				
-*Name* : ${baby1[0].nama}
-*Size* : ${baby1[0].size}
-*Mime* : ${baby1[0].mime}
-*Link* : ${baby1[0].link}`
-reply(`${result4}`)
-Miku.sendMessage(m.chat, { document : { url : baby1[0].link}, fileName : baby1[0].nama, mimetype: baby1[0].mime }, { quoted : m }).catch ((err) => reply(mess.error))
-}
-break
-
-case 'masturbation': case 'jahy': case 'hentai': case 'glasses': case 'gangbang': case 'foot': 
-case 'femdom': case 'cum': case 'ero': case 'cuckold': case 'blowjob': case 'bdsm': 
-case 'ahegao': case 'ass': case 'orgy': case 'panties': case 'pussy': case 'thighs': case 'yuri': case 'tentacles':
-if (isBan) return reply(mess.banned)	 			
-if (isBanChat) return reply(mess.bangc)
-if (!m.isGroup) return replay(mess.grouponly)
-if (!AntiNsfw) return reply(mess.nonsfw)
-try{
-reply(mess.waiting)
-NoHorny = await fetchJson(`https://myselfff.herokuapp.com/docs/nsfw/${command}`)
-YesHorny = await getBuffer(NoHorny.result)
-Miku.sendMessage(from, {image:YesHorny},{quoted:m})
-} catch (e) {error("Error")}	
-break
-
-case 'spank':
+case 'nsfwloli' :  {
     if (isBan) return reply(mess.banned)	 			
     if (isBanChat) return reply(mess.bangc)
     if (!m.isGroup) return replay(mess.grouponly)
     if (!AntiNsfw) return reply(mess.nonsfw)
+    
 reply(mess.waiting)
-spankd = await axios.get(`https://nekos.life/api/v2/img/spank`)                                   
-  let spbuff = await getBuffer(spankd.data.url)
-let spgif = await GIFBufferToVideoBuffer(spbuff)   
-        await Miku.sendMessage(m.chat,{video: spgif, gifPlayback:true},{ quoted:m }).catch(err => {
-                    return reply('Error!')
-                                    })
+ waifudhgd = await getBuffer(`https://api-reysekha.herokuapp.com/api/wallpaper/${command}?apikey=APIKEY  `)     
+ let nsfwapireply = [
+    {buttonId: `${prefix}${command}`, buttonText: {displayText: `>>`}, type: 1},
+    ]
+  let nsfwapimess = {
+   image: waifudhgd,
+   caption:  `Here it is...`,
+  buttons: nsfwapireply,
+  headerType: 1
+  }     
+            await Miku.sendMessage(m.chat, nsfwapimess, { quoted:m }).catch(err => {
+                    return('Error!')
+                })
+            }
 break
+
+
+case 'ahegao' : case 'ass' : case 'bdsm' :  case 'cuckold' :  case 'cum' : case 'ero' :
+    case 'femdom' : case 'gangbang' : case 'foot' : case 'glasses':  case 'hentai': 
+     case 'masturbation': case 'neko': case 'orgy': case 'panties': 
+    case 'pussy': case 'tentacles': case 'things': case 'yuri': 
+{
+    if (isBan) return reply(mess.banned)	 			
+    if (isBanChat) return reply(mess.bangc)
+    if (!m.isGroup) return replay(mess.grouponly)
+    if (!AntiNsfw) return reply(mess.nonsfw)
+    
+    reply(mess.waiting)
+     waifudhgd = await getBuffer(`https://api-reysekha.herokuapp.com/api/nsfw/${command}?apikey=APIKEY`)     
+     let nsfwapireply = [
+        {buttonId: `${prefix}${command}`, buttonText: {displayText: `>>`}, type: 1},
+        ]
+      let nsfwapimess = {
+       image: waifudhgd,
+       caption:  `Here it is...`,
+      buttons: nsfwapireply,
+      headerType: 1
+      }     
+                await Miku.sendMessage(m.chat, nsfwapimess, { quoted:m }).catch(err => {
+                        return('Error!')
+                    })
+                }
+    break
+
+
 
 case 'blowjobgif': case 'bj' :
     if (isBan) return reply(mess.banned)	 			
@@ -3993,28 +4071,8 @@ reply(mess.waiting)
                 })
 break
 
-case 'gasm':
-    if (isBan) return reply(mess.banned)	 			
-    if (isBanChat) return reply(mess.bangc)
-    if (!m.isGroup) return replay(mess.grouponly)
-    if (!AntiNsfw) return reply(mess.nonsfw)
-reply(mess.waiting)						
- waifudd = await axios.get(`https://nekos.life/api/v2/img/${command}`)
-                           var wbuttsss = [
-        {buttonId: `${prefix}gasm`, buttonText: {displayText: `>>`}, type: 1},
-        ]
-      let buttonsssMessages = {
-       image: {url:waifudd.data.url},
-       caption:  `Here it is...`,
-      footer: `${global.BotName}`,
-      buttons: wbuttsss,
-      headerType: 4
-      }     
-            await Miku.sendMessage(m.chat, buttonsssMessages,{ quoted:m }).catch(err => {
-                    return('Error!')
-                })
-break  
 
+/////////////////////////// NFFW end /////////////////////
 
 case 'smug2':
     if (isBan) return reply(mess.banned)	 			
@@ -4545,10 +4603,7 @@ const { Anime } =require("@shineiichijo/marika")
     details += `*URL:* ${result.url}\n\n`;
     if (result.background !== null)
       details += `*Background:* ${result.background}\n\n`;
-    details += `*Description:* ${result.synopsis.replace(
-      /\[Written by MAL Rewrite]/g,
-      ""
-    )}`
+
 Miku.sendMessage(m.chat,{image:{url:result.images.jpg.large_image_url},caption:details},{quoted:m})   
 break
 
@@ -4750,7 +4805,7 @@ Here's the list of my Commands.
  
  *━━━〈  🎆 Core 🎆  〉━━━*
 
-speak, miku, stalk, profile, help, delete, deleteall, listgc, listpc, welcome, support, repo, script 
+speak, miku, stalk, profile, help, delete, deleteall, listgc, listpc, welcome, support, repo, script, admin 
  
  *━━━〈  🎀 Owner 🎀  〉━━━*
 
